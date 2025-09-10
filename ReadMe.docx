@@ -1,0 +1,51 @@
+casino-backend/
+ ┣ src/
+ ┃ ┣ config/                # Configuration files
+ ┃ ┃ ┣ db.js                # PostgreSQL connection
+ ┃ ┃ ┣ redis.js             # Redis connection
+ ┃ ┃ ┗ index.js             # Load all configs
+ ┃ ┣ models/                # Database models (tables)
+ ┃ ┃ ┣ UserModel.js
+ ┃ ┃ ┣ TransactionModel.js
+ ┃ ┃ ┗ GameSessionModel.js
+ ┃ ┣ controllers/           # Handle API requests
+ ┃ ┃ ┣ userController.js
+ ┃ ┃ ┣ gameController.js
+ ┃ ┃ ┣ depositController.js
+ ┃ ┃ ┗ withdrawController.js
+ ┃ ┣ routes/                # API routes
+ ┃ ┃ ┣ userRoutes.js
+ ┃ ┃ ┣ gameRoutes.js
+ ┃ ┃ ┣ depositRoutes.js
+ ┃ ┃ ┗ withdrawRoutes.js
+ ┃ ┣ services/              # Business logic
+ ┃ ┃ ┣ userService.js
+ ┃ ┃ ┣ gameService.js
+ ┃ ┃ ┣ walletService.js
+ ┃ ┃ ┗ paymentService.js
+ ┃ ┣ middlewares/           # Middleware (auth, error handling, rate limits)
+ ┃ ┃ ┣ authMiddleware.js
+ ┃ ┃ ┣ errorMiddleware.js
+ ┃ ┃ ┗ rateLimit.js
+ ┃ ┣ utils/                 # Helper functions
+ ┃ ┃ ┣ logger.js
+ ┃ ┃ ┣ validators.js
+ ┃ ┃ ┗ cryptoUtils.js
+ ┃ ┣ contracts/             # Solidity smart contracts
+ ┃ ┃ ┣ DepositWithdraw.sol
+ ┃ ┃ ┣ ProvablyFairGame.sol
+ ┃ ┃ ┗ build/               # Compiled artifacts (Hardhat/Foundry)
+ ┃ ┣ jobs/                  # Background jobs (workers, cron)
+ ┃ ┃ ┗ payoutWorker.js
+ ┃ ┣ tests/                 # Automated tests
+ ┃ ┃ ┣ user.test.js
+ ┃ ┃ ┣ deposit.test.js
+ ┃ ┃ ┗ game.test.js
+ ┃ ┗ app.js                 # Main express app
+ ┣ scripts/                 # Deployment or maintenance scripts
+ ┃ ┣ deployContracts.js
+ ┃ ┗ seedDatabase.js
+ ┣ .env                     # Environment variables (DB URL, API keys, etc)
+ ┣ package.json
+ ┣ README.md
+ ┗ server.js                 # Entry point (starts Express server)
