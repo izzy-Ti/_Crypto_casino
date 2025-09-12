@@ -1,27 +1,15 @@
-// src/app.js
-import express from "express";
-import cors from "cors";
-import morgan from "morgan"; // logging middleware
-import userRoutes from "./routes/userRoutes.js";
-import depositRoutes from "./routes/depositRoutes.js";
-import withdrawRoutes from "./routes/withdrawRoutes.js";
-import gameRoutes from "./routes/gameRoutes.js";
-import { errorHandler } from "./middlewares/errorMiddleware.js";
+import express from 'express'
+import pool from './config/db.js'
+import chalk from 'chalk'
+import dotenv from 'dotenv'
 
-const app = express();
+dotenv.config()
 
-// 🔹 Middlewares
-app.use(express.json()); // parse JSON
-app.use(cors());         // allow cross-origin requests
-app.use(morgan("dev"));  // log requests
+const app = express()
+const port = process.env.PORT
 
-// 🔹 Routes
-app.use("/api/users", userRoutes);
-app.use("/api/deposits", depositRoutes);
-app.use("/api/withdraws", withdrawRoutes);
-app.use("/api/games", gameRoutes);
+await pool.connect();
 
-// 🔹 Error handling (always at the end)
-app.use(errorHandler);
-
-export default app;
+app.listen(port || 5000, () =>{
+    console.log(chalk.yellow.bold(`server is running on ${port}`))
+})
