@@ -66,7 +66,7 @@ export const userLogin = async (req,res) => {
         `
         const existedUser =await pool.query(sql_query_email_validate, [email])
         const { email: userEmail, password: userPassword, id: id } = existedUser.rows[0];
-        if(!existedUser.rows.length === 0){
+        if(existedUser.rows.length === 0){
             return res.json({success: false, message: 'User not found'})
         }
         const isMatch = await bcrypt.compare(password, userPassword)
@@ -85,3 +85,54 @@ export const userLogin = async (req,res) => {
             return res.json({success: false, message: error.message})   
         }
 }
+export const logout = async(req, res) =>{
+  try{
+    res.clearCookie('token', {
+      httpOnly : true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',   
+    })
+    res.json({success: true, message: 'Logged out successfully'})
+  }catch(error){
+    return res.json({success: false, message: error.message})     
+  }
+}
+export const sendVerifyOTP = async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const sql = `SELECT * FROM "Users" WHERE id = $1 LIMIT 1`;
+    const result = await pool.query(sql, [userId]);
+    const User = result.rows[0];
+
+    if (!User) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    if (User.isaccverified) {  
+      return res.json({ success: false, message: "Account already verified" });
+    }
+
+    const OTP = String(Math.floor(100000 + Math.random() * 900000));
+    const OTPExpireAt = Date.now() + 24 * 60 * 60 * 1000;
+
+    const updateSql = `
+      UPDATE "Users"
+      SET "verifyOTP" = $1, "OTPExpireAt" = $2
+      WHERE id = $3
+    `;
+    await pool.query(updateSql, [OTP, OTPExpireAt, userId]);
+
+    const mailOption = {
+      from: process.env.EMAIL,
+      to: User.email,
+      subject: "Account verification OTP",
+      text: `Your OTP is ${OTP}, verify your account with this OTP`,
+    };
+    await transporter.sendMail(mailOption);
+
+    res.json({ success: true, message: "Verification OTP sent" });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
