@@ -213,3 +213,40 @@ export const sendResetOTP = async (req,res) =>{
     return res.json({success: false, message: error.message})     
   }
 }
+export const resetPassword = async (req,res) =>{
+  const {email, otp, newPassword} = req.body
+  if(!email || !otp || !newPassword){
+    res.json({success: false, message: 'Missing details'})
+  }
+  try{
+
+    const sql = `
+      SELECT * FROM "Users" WHERE email = $1 LIMIT 1;
+    ` 
+    const result = await pool.query(sql, [email])
+    const User = result.rows[0];
+
+    if(!User){
+      return res.json({success: false, message: 'User not found'})     
+    }
+    if(User.ResetOTP == '' || User.ResetOTP !== otp){
+      return res.json({success: false, message: 'Invalid OTP number'})     
+    }
+    if(User.ResetOTPExpireAt < Date.now()){
+      return res.json({success: false, message: 'OTP is Expired'})     
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    const sql_update = `
+      UPDATE "Users"
+      SET "password" = $1,
+      "ResetOTP" = $2,
+      "ResetOTPExpireAt" = $3
+
+      WHERE email = $4
+    `
+    await pool.query(sql_update, [hashedPassword, '', 0, email])
+    return res.json({success: true, message: 'Password has been reseted successfully'})     
+  }catch(error){
+    return res.json({success: false, message: error.message})     
+  }
+}
