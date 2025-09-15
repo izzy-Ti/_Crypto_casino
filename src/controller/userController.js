@@ -250,3 +250,23 @@ export const resetPassword = async (req,res) =>{
     return res.json({success: false, message: error.message})     
   }
 }
+export const getUserData = async (req,res) =>{
+  try{
+    const {userId} = req.body
+    const sql = `SELECT * FROM "Users" WHERE id = $1 LIMIT 1`;
+    const result = await pool.query(sql, [userId]);
+    const User = result.rows[0];
+
+    if(!User){
+      return res.json({success: false, message: 'User not found'})     
+    }
+    return res.json({success: true,
+      userData: {
+        name: User.name,
+        email: User.email,
+        IsAccVerified: User.IsAccVerified,
+      }})     
+  }catch(error){
+    return res.json({success: false, message: error.message})     
+  }
+}
