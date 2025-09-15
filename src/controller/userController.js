@@ -7,7 +7,7 @@ import transporter from "../config/nodeMailer.js";
 export const userRegister = async (req,res) => {
     const {name,username, email, password, avater} = req.body
     const role = "USER"
-    if(!name || !email || !password) {
+    if(!name || !email || !password || !username) {
         return res.json({success: false, message: 'Missing Detail'})
     }
     if(role == 'ADMIN'){
@@ -16,11 +16,18 @@ export const userRegister = async (req,res) => {
     try{
         const hashedPassword = await bcrypt.hash(password, 10)
         const sql_query_email_validate = `
-            SELECT * FROM "Users" WHERE email = $1 LIMIT 1
+            SELECT * FROM "Users" WHERE email = $1 LIMIT 1;
         `
+        const sql_username = `
+          SELECT * FROM "Users" WHERE username = $1 LIMIT 1;
+        `
+        const userNaem =await pool.query(sql_username, [username]);
         const existedUser =await pool.query(sql_query_email_validate, [email])
-        if(existedUser.rows.length > 0){
+        if(existedUser.rows.length > 0 ){
             return res.json({success: false, message: 'Email already existes'})
+        }
+        if(userNaem.rows.length > 0){
+            return res.json({success: false, message: 'Username already existes'})
         }
         const sql_query_reg = `
             INSERT INTO "Users" (name, username, password, avater, email, role)
@@ -46,8 +53,34 @@ export const userRegister = async (req,res) => {
         const mailOption = ({
             from: process.env.EMAIL,
             to: email,
-            subject: 'Welcome to E_learn',
-            text: `Welcome to E_learn.Hello ${name} Your account is created with email id: ${email}`
+               subject: 'Welcome to E_Casino!',
+              html: `
+                  <div style="font-family: 'Arial', sans-serif; background-color: #121212; color: #fff; padding: 20px; border-radius: 8px;">
+                      <div style="text-align: center;">
+                          <h1 style="color: #FFD700;">🎉 Welcome to E_Casino, ${name} 🎉</h1>
+                          <p style="font-size: 16px; color: #aaa;">We're thrilled to have you join the E_Casino community!</p>
+                      </div>
+                      <div style="background-color: #333; padding: 20px; border-radius: 8px;">
+                          <p style="font-size: 18px; color: #fff;">Your account has been successfully created with the following details:</p>
+                          <table style="width: 100%; margin-top: 10px; color: #fff;">
+                              <tr>
+                                  <td style="padding: 8px; font-weight: bold;">Name:</td>
+                                  <td style="padding: 8px;">${name}</td>
+                              </tr>
+                              <tr>
+                                  <td style="padding: 8px; font-weight: bold;">Email:</td>
+                                  <td style="padding: 8px;">${email}</td>
+                              </tr>
+                          </table>
+                          <p style="font-size: 16px; margin-top: 15px;">Feel free to explore and enjoy our wide variety of casino games!</p>
+                          <div style="text-align: center; margin-top: 20px;">
+                              <a href="https://www.e-casino.com" style="background-color: #FFD700; color: #121212; padding: 12px 25px; text-decoration: none; font-size: 16px; border-radius: 5px; font-weight: bold;">Start Playing Now</a>
+                          </div>
+                      </div>
+                      <p style="text-align: center; color: #777; margin-top: 30px;">If you have any questions, feel free to <a href="mailto:support@e-casino.com" style="color: #FFD700;">contact us</a>.</p>
+                      <p style="text-align: center; font-size: 14px; color: #444;">&copy; 2025 E_Casino - All Rights Reserved</p>
+                  </div>
+              `
         })
         await transporter.sendMail(mailOption)
         res.json({success: true, message: 'User registered'})
@@ -126,8 +159,28 @@ export const sendVerifyOTP = async (req, res) => {
     const mailOption = {
       from: process.env.EMAIL,
       to: User.email,
-      subject: "Account verification OTP",
-      text: `Your OTP is ${OTP}, verify your account with this OTP`,
+      subject: "🔐 Verify Your Account - OTP Code",
+      html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #f9f9f9; border-radius: 10px; border: 1px solid #eee;">
+            <div style="text-align: center; padding: 10px 0;">
+              <h1 style="color: #4A90E2;">Welcome to CryptoCasino 🎰</h1>
+              <p style="color: #555;">We’re excited to have you! Please verify your account using the OTP below:</p>
+            </div>
+
+            <div style="background: #fff; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-bottom: 15px;">Your OTP Code</h2>
+              <div style="font-size: 32px; letter-spacing: 5px; font-weight: bold; color: #4A90E2; margin: 20px 0;">
+                ${OTP}
+              </div>
+              <p style="color: #888;">This OTP will expire in <b>24 hours</b>.</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px; color: #777;">
+              <p>If you didn’t request this, you can safely ignore this email.</p>
+              <p style="font-size: 14px;">© ${new Date().getFullYear()} CryptoCasino. All rights reserved.</p>
+            </div>
+          </div>
+          `
     };
     await transporter.sendMail(mailOption);
 
@@ -205,7 +258,27 @@ export const sendResetOTP = async (req,res) =>{
         from: process.env.EMAIL,
         to: User.email,
         subject: 'Password reset OTP',
-        text: `Your OTP for reseting your password is ${OTP}. Use this OTP to proceed with reseting your password.`
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #f9f9f9; border-radius: 10px; border: 1px solid #eee;">
+            <div style="text-align: center; padding: 10px 0;">
+              <h1 style="color: #4A90E2;">Welcome to CryptoCasino 🎰</h1>
+              <p style="color: #555;">We’re excited to have you! Please verify your account using the OTP below:</p>
+            </div>
+
+            <div style="background: #fff; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-bottom: 15px;">Your OTP Code</h2>
+              <div style="font-size: 32px; letter-spacing: 5px; font-weight: bold; color: #4A90E2; margin: 20px 0;">
+                ${OTP}
+              </div>
+              <p style="color: #888;">This OTP will expire in <b>24 hours</b>.</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px; color: #777;">
+              <p>If you didn’t request this, you can safely ignore this email.</p>
+              <p style="font-size: 14px;">© ${new Date().getFullYear()} CryptoCasino. All rights reserved.</p>
+            </div>
+          </div>
+          `
       })
     await transporter.sendMail(mailOption)
     res.json({success: true, message: 'OTP sent to your email'})
