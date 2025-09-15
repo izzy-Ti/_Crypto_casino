@@ -177,3 +177,39 @@ export const isAuth = async (req,res ) =>{
     return res.json({success: false, message: error.message})     
   }
 }
+export const sendResetOTP = async (req,res) =>{
+  const {email} = req.body
+  if(!email){
+    res.json({success: false, message: 'Missing details'})
+  } 
+  try{
+    const sql = `
+      SELECT * FROM "Users" WHERE email = $1 LIMIT 1;
+    ` 
+    const result = await pool.query(sql, [email])
+    const User = result.rows[0];
+    if(!User){
+      return res.json({success: false, message: 'User not found'})     
+     }
+    const OTP = String(Math.floor(100000 + Math.random() * 900000))
+    const ResetOTPExpireAt = Date.now() + 15 * 60 * 1000
+    const sql_update = `
+     UPDATE "Users" 
+     SET "ResetOTP" = $1,
+      "ResetOTPExpireAt" = $2
+ 
+     WHERE email = $3
+    ` 
+    await pool.query(sql_update,[ OTP, ResetOTPExpireAt, email])
+    const mailOption = ({
+        from: process.env.EMAIL,
+        to: User.email,
+        subject: 'Password reset OTP',
+        text: `Your OTP for reseting your password is ${OTP}. Use this OTP to proceed with reseting your password.`
+      })
+    await transporter.sendMail(mailOption)
+    res.json({success: true, message: 'OTP sent to your email'})
+  }catch(error){
+    return res.json({success: false, message: error.message})     
+  }
+}
