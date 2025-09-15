@@ -136,3 +136,44 @@ export const sendVerifyOTP = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
+export const verifyOTP = async (req,res) =>{
+  const {otp, userId} = req.body
+  if(!userId || !otp){
+    return res.json({success: false, message: 'Missing details'})     
+  }
+  try{
+    const sql = `
+      SELECT * FROM "Users" WHERE id = $1 LIMIT 1;
+    `
+    const result = await pool.query(sql, [userId])
+    const User = result.rows[0];
+    if(!User) {
+      return res.json({success: false, message: 'User not found'})     
+    }
+    if(User.verifyOTP === '' || User.verifyOTP !== otp){
+      return res.json({success: false, message: 'Verification faild'})     
+    }
+    if(User.OTPExpireAt < Date.now()){
+      return res.json({success: false, message: 'OTP Expired'})     
+    }
+
+    const sql_update = `
+      UPDATE "Users"
+      SET "IsAccVerified" = $1,
+      "verifyOTP" = $2,
+      "OTPExpireAt" = $3
+      WHERE id = $4
+    `
+    await pool.query(sql_update, [true, '', 0, userId])
+    res.json({success: true, message: 'Verification OTP verified successfully'})
+  }catch(error){
+    return res.json({success: false, message: error.message})     
+  }
+}
+export const isAuth = async (req,res ) =>{
+    try{
+    return res.json({success: true})     
+  }catch(error){
+    return res.json({success: false, message: error.message})     
+  }
+}
