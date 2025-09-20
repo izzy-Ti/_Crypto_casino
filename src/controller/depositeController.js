@@ -1,21 +1,135 @@
-import Web3 from 'web3';
+import { ethers } from "ethers";
 import pool from "../config/db.js";
 import transporter from "../config/nodeMailer.js";
 
-// Initialize Web3 with Sepolia RPC URL
-const web3 = new Web3(new Web3.providers.HttpProvider("https://eth-sepolia.alchemyapi.io/v2/9KFjCrNm5WQmqW9RWoOTW"));
+// Correct instantiation of JsonRpcProvider
+const provider = new ethers.providers.JsonRpcProvider("https://eth-sepolia.g.alchemy.com/v2/9KFjCrNm5WQmqW9RWoOTW");
 
-// Your contract details
-const contractAddress = "0xe446a520E9304F123F888209711b0cC03016cF69";  // Sepolia Testnet contract address
-const contractABI = [/* Contract ABI remains the same */];
+// Your contract address
+const contractAddress = "0xe446a520E9304F123F888209711b0cC03016cF69";
 
-// Create the contract instance
-const casinoContract = new web3.eth.Contract(contractABI, contractAddress);
+// **Insert the actual ABI for your contract here**
+const contractABI = [
+  {
+    "inputs": [{"internalType": "uint64", "name": "_vrfSubscriptionId", "type": "uint64"},
+      {"internalType": "address", "name": "_vrfCoordinator", "type": "address"},
+      {"internalType": "uint256", "name": "_houseEdge", "type": "uint256"}],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [{"indexed": true, "internalType": "address", "name": "player", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "betId", "type": "uint256"}],
+    "name": "BetPlaced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [{"indexed": true, "internalType": "address", "name": "player", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}],
+    "name": "Deposit",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [{"indexed": true, "internalType": "address", "name": "player", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "betId", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "result", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "payout", "type": "uint256"}],
+    "name": "GameResult",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [{"indexed": true, "internalType": "address", "name": "player", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}],
+    "name": "Withdrawal",
+    "type": "event"
+  },
+  {
+    "stateMutability": "payable",
+    "type": "fallback"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "name": "balances",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "deposit",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "houseEdge",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "betAmount", "type": "uint256"}],
+    "name": "placeBet",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "_houseEdge", "type": "uint256"}],
+    "name": "setHouseEdge",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "vrfSubscriptionId",
+    "outputs": [{"internalType": "uint64", "name": "", "type": "uint64"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "stateMutability": "payable",
+    "type": "receive"
+  }
+];
 
-// Controller function to interact with the contract for deposit
+// Create contract instance
+const casinoContract = new ethers.Contract(contractAddress, contractABI, provider);
+
+// Now log contract methods to verify that `deposit` is available
+console.log("Contract methods:", casinoContract);
+
+
 export const createDeposite = async (req, res) => {
   const { userId } = req.body;
-  const price = parseInt(req.body.price, 10);  // Ensure price is an integer
+  let price = parseFloat(req.body.price);  // Convert price to float
+  
+  console.log("Deposit price:", price);
+
+  if (price <= 0) {
+    return res.json({ success: false, message: "Invalid deposit amount" });
+  }
 
   try {
     // Fetch user data from the database
@@ -27,78 +141,92 @@ export const createDeposite = async (req, res) => {
       return res.json({ success: false, message: "User not found" });
     }
 
-    // Check if the user is verified
+    // Ensure the user is not already verified
     if (User.isaccverified) {
       return res.json({ success: false, message: "Account already verified" });
     }
 
-    // Convert price to Wei (ETH -> Wei conversion)
-    const priceInWei = web3.utils.toWei(price.toString(), 'ether');  // Ensure it's a string
+    // Convert the price from Ether to Wei (ensure it's an integer)
+    const priceInWei = ethers.utils.parseEther(price.toString());
+    
+    // Ensure the price is an integer
+    const priceInWeiString = priceInWei.toString(); // This will return a string without decimals
+    const priceInWeiInteger = BigInt(priceInWeiString);  // BigInt conversion for precise handling
+
+    console.log("Price in Wei as integer:", priceInWeiInteger);
 
     // Get wallet address and private key
     const walletAddress = User.walletAddress;
-    const privateKey = process.env.PRIVATE_KEY;  // Your private key stored in .env file
+    const privateKey = process.env.PRIVATE_KEY;
 
-    // Create account from private key
-    const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+    // Create the wallet instance
+    const wallet = new ethers.Wallet(privateKey, provider);
 
     // Check account balance before making the transaction
-    const balance = await web3.eth.getBalance(account.address);
-    const balanceInEther = web3.utils.fromWei(balance, 'ether');
+    const balance = await wallet.getBalance();
+    const balanceInEther = ethers.utils.formatEther(balance);
     console.log(`Account balance: ${balanceInEther} ETH`);
 
-    // Ensure enough funds to cover both transaction and gas
-    const gasPrice = await web3.eth.getGasPrice();
-    const gasEstimate = await casinoContract.methods.deposit().estimateGas({
-      from: account.address,
+    // Estimate gas
+    const gasPrice = await provider.getGasPrice();
+    const gasEstimate = await casinoContract.estimateGas.deposit({
+      from: wallet.address,
       value: priceInWei,
     });
 
     console.log(`Gas price: ${gasPrice}`);
     console.log(`Gas estimate: ${gasEstimate}`);
 
-    const totalCostInWei = web3.utils.toBN(priceInWei).add(web3.utils.toBN(gasEstimate).mul(web3.utils.toBN(gasPrice)));
-    const totalCostInEther = web3.utils.fromWei(totalCostInWei, 'ether');
+    // Calculate the total cost
+    const totalCostInWei = priceInWei.add(gasEstimate.mul(gasPrice));
+    const totalCostInEther = ethers.utils.formatEther(totalCostInWei);
 
+    // Check if balance is sufficient
     if (parseFloat(balanceInEther) < parseFloat(totalCostInEther)) {
-      return res.json({ success: false, message: "Insufficient funds to cover gas and transaction value" });
+      return res.json({ success: false, message: "Insufficient funds" });
     }
 
-    // Set the transaction parameters
+    // Transaction parameters
+    const nonce = await provider.getTransactionCount(wallet.address, 'latest');
     const tx = {
-      from: account.address,
+      nonce: nonce,  // Add nonce here
       to: contractAddress,
-      value: priceInWei,  // value is a string (already in Wei)
-      gas: gasEstimate,   // Set dynamic gas estimate
-      gasPrice: gasPrice,  // Use dynamic gas price
-      data: casinoContract.methods.deposit().encodeABI(),
+      value: priceInWei,  // This is already in Wei
+      gasLimit: gasEstimate,
+      gasPrice: gasPrice,
+      data: casinoContract.interface.encodeFunctionData("deposit", []),
     };
 
     // Sign the transaction
-    const signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
+    const signedTx = await wallet.signTransaction(tx);
+    const txResponse = await provider.sendTransaction(signedTx);
 
-    // Send the transaction
-    const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+    // Wait for transaction receipt
+    const receipt = await txResponse.wait();
 
-    // Log the transaction in the database
-    const userBalance = User.balance + price;
+    // Update the user's balance in the database
+    const userBalance = BigInt(User.balance) + priceInWeiInteger;  // Ensure integer addition
     const sql_update = `UPDATE "Users" SET balance = $1 WHERE id = $2`;
-    await pool.query(sql_update, [userBalance, userId]);
 
-    // Send email notification to the user
+    console.log("SQL Update Query:", sql_update, [userBalance.toString(), userId]);  // Use BigInt for SQL update
+    await pool.query(sql_update, [userBalance.toString(), userId]);  // Pass as string (BigInt string representation)
+
+    // Send email notification
     const mailOption = {
       from: process.env.EMAIL,
       to: User.email,
       subject: 'Deposit Confirmation - E_Casino',
-      html: `...` // Your HTML for email remains the same
+      html: `...`  // Your HTML content remains the same
     };
 
     await transporter.sendMail(mailOption);
 
-    res.json({ success: true, message: `Deposit of ${price} is successful` });
+    res.json({ success: true, message: `Deposit of ${price} ETH is successful` });
 
   } catch (error) {
     console.error("Error processing deposit:", error);
     res.json({ success: false, message: error.message });
   }
 };
+
+
